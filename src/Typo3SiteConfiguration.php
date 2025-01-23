@@ -13,6 +13,9 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class Typo3SiteConfiguration extends SiteConfiguration
 {
+    private const CONFIG_FILE_NAME = 'config.yaml';
+    
+    private const CACHE_IDENTIFIER = 'sites-configuration';
     /**
      * Load plain configuration
      * This method should only be used in case the original configuration as it exists in the file should be loaded,
@@ -26,7 +29,7 @@ class Typo3SiteConfiguration extends SiteConfiguration
      */
     public function load(string $siteIdentifier): array
     {
-        $fileName = $this->configPath . '/' . $siteIdentifier . '/' . $this->configFileName;
+        $fileName = $this->configPath . '/' . $siteIdentifier . '/' . self::CONFIG_FILE_NAME;
         $factory = new ConfigurationReaderFactory(Environment::getConfigPath());
         return $factory->createRootReader($fileName)->readConfig();
     }
@@ -50,13 +53,13 @@ class Typo3SiteConfiguration extends SiteConfiguration
      */
     public function write(string $siteIdentifier, array $configuration, bool $protectPlaceholders = false): void
     {
-        $fileName = $this->configPath . '/' . $siteIdentifier . '/' . $this->configFileName;
+        $fileName = $this->configPath . '/' . $siteIdentifier . '/' . self::CONFIG_FILE_NAME;
         if (!file_exists($fileName)) {
             GeneralUtility::mkdir_deep($this->configPath . '/' . $siteIdentifier);
         }
         $yamlFileContents = Yaml::dump($configuration, 99);
         GeneralUtility::writeFile($fileName, $yamlFileContents);
-        $this->cache->remove($this->cacheIdentifier);
+        $this->cache->remove(self::CACHE_IDENTIFIER);
         $this->cache->remove('pseudo-sites');
     }
 
@@ -72,13 +75,13 @@ class Typo3SiteConfiguration extends SiteConfiguration
     protected function getAllSiteConfigurationFromFiles(bool $useCache = true): array
     {
         // Check if the data is already cached
-        $siteConfiguration = $useCache ? $this->cache->require($this->cacheIdentifier) : false;
+        $siteConfiguration = $useCache ? $this->cache->require(self::CACHE_IDENTIFIER) : false;
         if ($siteConfiguration !== false && $siteConfiguration !== null) {
             return $siteConfiguration;
         }
         $finder = new Finder();
         try {
-            $finder->files()->depth(0)->name($this->configFileName)->in($this->configPath . '/*');
+            $finder->files()->depth(0)->name(self::CONFIG_FILE_NAME)->in($this->configPath . '/*');
         } catch (\InvalidArgumentException $e) {
             // Directory $this->configPath does not exist yet
             $finder = [];
@@ -98,7 +101,7 @@ class Typo3SiteConfiguration extends SiteConfiguration
             );
             $siteConfiguration[$identifier] = $configuration;
         }
-        $this->cache->set($this->cacheIdentifier, 'return ' . var_export($siteConfiguration, true) . ';');
+        $this->cache->set(self::CACHE_IDENTIFIER, 'return ' . var_export($siteConfiguration, true) . ';');
 
         return $siteConfiguration;
     }
